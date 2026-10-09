@@ -23,6 +23,10 @@ button:hover { background: #f9fafb; }
 .switch input:checked + span { background: #4f46e5; }
 .switch input:checked + span::before { transform: translateX(16px); }
 
+.row input[type="number"] { flex: 1; min-width: 0; padding: 7px 8px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; }
+.row .to { align-self: center; color: #6b7280; }
+.hint { margin: 6px 0 0; font-size: 11px; color: #9ca3af; }
+
 footer { font-size: 11px; color: #9ca3af; }
 
 .check { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 6px; cursor: pointer; }

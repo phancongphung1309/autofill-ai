@@ -4,6 +4,13 @@
   // "email address" before "address").
   const RULES = [
     ['email', /\be ?mail\b/],
+    // "date" is a strong signal, so it beats words like "address" or "state"
+    // ("Address change date", "Close date"). Birth dates are handled first.
+    ['dob', /\bdate of birth\b|\bbirth ?date\b|\bdob\b|\bbirthday\b|\bbday\b/],
+    ['date', /\bdate\b|\bdated\b/],
+    // Money fields are filled from the price range in the popup, no AI needed.
+    ['deposit', /\bdeposits?\b/],
+    ['price', /\bprices?\b|\bamount\b|\bcost\b/],
     ['username', /\buser ?(name|id)\b|\blogin\b|\bnick ?name\b/],
     ['company', /\bcompany\b|\borgani[sz]ation\b|\bemployer\b|\bbusiness\b/],
     ['website', /\bweb ?site\b|\bhomepage\b|\burl\b/],
@@ -16,7 +23,6 @@
     ['address2', /\baddress ?(line)? ?2\b|\bline ?2\b|\bapt\b|\bapartment\b|\bsuite\b/],
     ['address', /\baddress\b|\bstreet\b|\baddr\b/],
     ['phone', /\bphone\b|\bmobile\b|\btel\b|\btelephone\b|\bcell\b/],
-    ['dob', /\bbirth\b|\bdob\b|\bbirthday\b|\bbday\b/],
     ['age', /\bage\b/],
     ['fullName', /\bfull ?name\b|\bname\b/],
   ];
@@ -43,7 +49,9 @@
     url: 'website',
   };
 
-  const TYPE_FALLBACK = { email: 'email', tel: 'phone', url: 'website' };
+  const TYPE_FALLBACK = {
+    email: 'email', tel: 'phone', url: 'website', date: 'date', 'datetime-local': 'date',
+  };
 
   const SKIP_TYPES = new Set([
     'hidden', 'password', 'checkbox', 'radio', 'file', 'submit',
@@ -136,6 +144,13 @@
     );
   }
 
+  // All human/developer-facing text for a field, normalised.
+  function fieldText(el) {
+    return normalize([
+      el.name, el.id, labelText(el), el.getAttribute('aria-label'), el.placeholder, el.title,
+    ].join(' '));
+  }
+
   // Context sent to the AI for fields the rules above don't recognise.
   function describe(el) {
     const scope = el.form || el.closest('form, [role="form"], fieldset') || el.ownerDocument.body;
@@ -166,5 +181,7 @@
     };
   }
 
-  globalThis.AutofillDetector = { detect, describe, isFillable, isIgnored, classifyText, normalize };
+  globalThis.AutofillDetector = {
+    detect, describe, fieldText, isFillable, isIgnored, classifyText, normalize,
+  };
 })();

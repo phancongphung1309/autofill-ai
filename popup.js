@@ -1,7 +1,11 @@
-const DEFAULTS = { enabled: true, mode: 'manual', nat: 'us', ai: true };
+const DEFAULTS = { enabled: true, mode: 'manual', nat: 'us', ai: true, dateFormat: 'YYYY-MM-DD',
+  priceMin: 300000, priceMax: 900000 };
 
 const enabledEl = document.getElementById('enabled');
 const natEl = document.getElementById('nat');
+const dateFormatEl = document.getElementById('dateFormat');
+const priceMinEl = document.getElementById('priceMin');
+const priceMaxEl = document.getElementById('priceMax');
 const statusEl = document.getElementById('status');
 const aiEl = document.getElementById('ai');
 const aiStatusEl = document.getElementById('aiStatus');
@@ -13,6 +17,9 @@ function render(s) {
   modeEls.forEach((el) => { el.checked = el.value === s.mode; });
   natEl.value = s.nat;
   aiEl.checked = s.ai;
+  dateFormatEl.value = s.dateFormat;
+  priceMinEl.value = s.priceMin;
+  priceMaxEl.value = s.priceMax;
 }
 
 chrome.storage.sync.get(DEFAULTS, render);
@@ -38,6 +45,21 @@ natEl.addEventListener('change', async () => {
 });
 
 document.getElementById('refresh').addEventListener('click', refresh);
+
+function savePriceRange() {
+  let min = Math.max(0, Number(priceMinEl.value) || 0);
+  let max = Math.max(0, Number(priceMaxEl.value) || 0);
+  if (max < min) [min, max] = [max, min];
+  priceMinEl.value = min;
+  priceMaxEl.value = max;
+  chrome.storage.sync.set({ priceMin: min, priceMax: max });
+}
+priceMinEl.addEventListener('change', savePriceRange);
+priceMaxEl.addEventListener('change', savePriceRange);
+
+dateFormatEl.addEventListener('change', () =>
+  chrome.storage.sync.set({ dateFormat: dateFormatEl.value })
+);
 
 // ---------- AI ----------
 

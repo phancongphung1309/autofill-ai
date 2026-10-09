@@ -46,6 +46,28 @@
   </section>
 
   <section>
+    <h2>Date format</h2>
+    <select id="dateFormat">
+      <option value="YYYY-MM-DD">YYYY-MM-DD (2026-10-09)</option>
+      <option value="DD/MM/YYYY">DD/MM/YYYY (09/10/2026)</option>
+      <option value="MM/DD/YYYY">MM/DD/YYYY (10/09/2026)</option>
+      <option value="DD-MM-YYYY">DD-MM-YYYY (09-10-2026)</option>
+      <option value="DD.MM.YYYY">DD.MM.YYYY (09.10.2026)</option>
+    </select>
+    <p class="hint">Used for every date field (Offer Date, Close Date, …). A placeholder like "dd/mm/yyyy" on the field wins.</p>
+  </section>
+
+  <section>
+    <h2>Price range</h2>
+    <div class="row">
+      <input type="number" id="priceMin" min="0" step="1000" aria-label="Minimum price" />
+      <span class="to">to</span>
+      <input type="number" id="priceMax" min="0" step="1000" aria-label="Maximum price" />
+    </div>
+    <p class="hint">Used for Price, Amount and Cost fields. Deposits are 5–20% of the price.</p>
+  </section>
+
+  <section>
     <h2>AI for unknown fields</h2>
     <label class="check">
       <input type="checkbox" id="ai" />
