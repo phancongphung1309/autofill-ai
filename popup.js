@@ -1,8 +1,10 @@
-const DEFAULTS = { enabled: true, mode: 'manual', nat: 'us' };
+const DEFAULTS = { enabled: true, mode: 'manual', nat: 'us', ai: true };
 
 const enabledEl = document.getElementById('enabled');
 const natEl = document.getElementById('nat');
 const statusEl = document.getElementById('status');
+const aiEl = document.getElementById('ai');
+const aiStatusEl = document.getElementById('aiStatus');
 const modeEls = document.querySelectorAll('input[name="mode"]');
 
 function render(s) {
@@ -10,6 +12,7 @@ function render(s) {
   document.body.classList.toggle('disabled', !s.enabled);
   modeEls.forEach((el) => { el.checked = el.value === s.mode; });
   natEl.value = s.nat;
+  aiEl.checked = s.ai;
 }
 
 chrome.storage.sync.get(DEFAULTS, render);
@@ -35,3 +38,50 @@ natEl.addEventListener('change', async () => {
 });
 
 document.getElementById('refresh').addEventListener('click', refresh);
+
+// ---------- AI ----------
+
+const downloadEl = document.getElementById('downloadAi');
+
+const AI_STATUS = {
+  unsupported: "This Chrome doesn't have built-in AI. Update to Chrome 138+ (desktop).",
+  unavailable:
+    "Your device can't run Chrome's built-in AI (needs 22 GB free disk and a GPU with 4 GB+ VRAM, or 16 GB RAM).",
+  downloadable: 'One-time model download needed (a few GB, then works offline).',
+  downloading: 'Model is downloading…',
+  available: 'Ready ✓ Unknown fields are handled on-device.',
+};
+
+async function renderAi() {
+  let state;
+  try {
+    state = await Nano.availability();
+  } catch (err) {
+    state = 'unsupported';
+  }
+  aiStatusEl.textContent = AI_STATUS[state] || state;
+  downloadEl.hidden = !(state === 'downloadable' || state === 'downloading');
+}
+renderAi();
+
+aiEl.addEventListener('change', () => chrome.storage.sync.set({ ai: aiEl.checked }));
+
+// Downloading needs a user click, so it has to start here rather than in the background.
+downloadEl.addEventListener('click', async () => {
+  downloadEl.disabled = true;
+  aiStatusEl.textContent = 'Starting download…';
+  try {
+    await Nano.download((p) => {
+      aiStatusEl.textContent = `Downloading model… ${Math.round(p * 100)}% (you can close this popup)`;
+    });
+  } catch (err) {
+    aiStatusEl.textContent = `Download failed: ${err.message}`;
+  }
+  downloadEl.disabled = false;
+  renderAi();
+});
+
+document.getElementById('clearAi').addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'clearAiCache' });
+  aiStatusEl.textContent = 'AI cache cleared.';
+});

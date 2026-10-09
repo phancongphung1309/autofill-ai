@@ -45,7 +45,21 @@
     <p id="status"></p>
   </section>
 
-  <footer>Fields that already have a value are never changed. Data from randomuser.me</footer>
+  <section>
+    <h2>AI for unknown fields</h2>
+    <label class="check">
+      <input type="checkbox" id="ai" />
+      Use Chrome's built-in AI when a field isn't recognised (e.g. "unit", "lotAndPlan"). Free, no key, runs on your device.
+    </label>
+    <div class="row">
+      <button id="downloadAi" type="button" hidden>Download AI model</button>
+      <button id="clearAi" type="button">Clear AI cache</button>
+    </div>
+    <p id="aiStatus"></p>
+  </section>
+
+  <footer>Fields that already have a value are never changed. Data from randomuser.me; AI runs on-device.</footer>
+  <script src="nano.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

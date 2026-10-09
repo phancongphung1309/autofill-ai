@@ -96,12 +96,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
-  if (msg?.type === 'testAiKey') {
-    testAiKey(msg.apiKey)
-      .then(() => sendResponse({ ok: true }))
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
   if (msg?.type === 'clearAiCache') {
     chrome.storage.local.remove('aiCache').then(() => sendResponse({ ok: true }));
     return true;

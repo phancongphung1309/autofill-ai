@@ -1,14 +1,19 @@
 // Watches for focus on inputs and either fills them (auto mode) or shows a
 // suggestion dropdown below them (manual mode).
+//
+// Known fields (city, email, …) are filled from a fetched profile. Unknown
+// fields (e.g. name="lotAndPlan") go to Chrome's built-in on-device AI.
 (() => {
-  const { detect } = globalThis.AutofillDetector;
+  const { detect, describe, isFillable, isIgnored } = globalThis.AutofillDetector;
   const OPTION_COUNT = 4;
 
-  let settings = { enabled: true, mode: 'manual' };
+  let settings = { enabled: true, mode: 'manual', ai: true };
   // One "anchor" profile per page keeps related fields consistent
   // (first name, last name and email all belong to the same person).
   let anchorProfile = null;
   let anchorPromise = null;
+  // AI answers per element, so refocusing a field doesn't ask again.
+  const aiResults = new WeakMap();
 
   chrome.storage.sync.get(settings, (s) => { settings = { ...settings, ...s }; });
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -20,11 +25,13 @@
 
   // ---------- data ----------
 
-  async function requestProfiles(count) {
-    const res = await chrome.runtime.sendMessage({ type: 'getProfiles', count });
+  async function send(msg) {
+    const res = await chrome.runtime.sendMessage(msg);
     if (!res?.ok) throw new Error(res?.error || 'No response from extension');
-    return res.profiles;
+    return res;
   }
+
+  const requestProfiles = async (count) => (await send({ type: 'getProfiles', count })).profiles;
 
   function getAnchor() {
     if (anchorProfile) return Promise.resolve(anchorProfile);
@@ -32,6 +39,22 @@
       .then(([p]) => (anchorProfile = p))
       .finally(() => { anchorPromise = null; });
     return anchorPromise;
+  }
+
+  async function askAi(el, { fresh = false } = {}) {
+    if (!fresh && aiResults.has(el)) return aiResults.get(el);
+    const field = describe(el);
+    // Give the AI the fake person so its values match the rest of the form.
+    try {
+      const p = await getAnchor();
+      field.person = {
+        name: p.fullName, address: p.address, city: p.city, state: p.state,
+        zip: p.zip, country: p.country,
+      };
+    } catch {}
+    const { result } = await send({ type: 'aiSuggest', field, fresh });
+    if (!result.disabled) aiResults.set(el, result);
+    return result;
   }
 
   function formatValue(el, key, profile) {
@@ -43,7 +66,11 @@
       if (/^dd/.test(hint)) value = `${d}/${m}/${y}`;
       else if (/^mm/.test(hint)) value = `${m}/${d}/${y}`;
     }
-    if (el.type === 'number') value = value.replace(/\D/g, '');
+    return fitValue(el, value);
+  }
+
+  function fitValue(el, value) {
+    if (el.type === 'number') value = value.replace(/[^\d.-]/g, '');
     if (el.maxLength > 0) value = value.slice(0, el.maxLength);
     return value;
   }
@@ -60,6 +87,46 @@
     lastName: (p) => p.fullName,
   };
   const subtitleFor = (key, p) => (SUBTITLE[key] || ((x) => x.fullName))(p);
+  const prettyKey = (key) => key.replace(/([A-Z])/g, ' $1').toLowerCase();
+
+  // A "source" knows how to produce dropdown items for one field.
+  // load(fresh) -> [{ value, sub, profile? }]
+  function profileSource(el, key) {
+    return {
+      title: prettyKey(key),
+      async load() {
+        const profiles = await requestProfiles(OPTION_COUNT + 2);
+        if (anchorProfile) profiles.unshift(anchorProfile);
+        const seen = new Set();
+        const items = [];
+        for (const p of profiles) {
+          const value = formatValue(el, key, p);
+          if (!value || seen.has(value)) continue;
+          seen.add(value);
+          items.push({ value, sub: subtitleFor(key, p), profile: p });
+          if (items.length === OPTION_COUNT) break;
+        }
+        return items;
+      },
+    };
+  }
+
+  function aiSource(el) {
+    let key = null;
+    const source = {
+      title: 'asking AI…',
+      async load(fresh) {
+        const r = await askAi(el, { fresh });
+        if (!r.fillable) return null; // AI says leave it alone
+        // AI recognised it as a standard field: use profile data for consistency.
+        if (r.key) { key = r.key; source.title = prettyKey(key); return profileSource(el, key).load(); }
+        source.title = `${r.label || 'field'} · AI`;
+        return [...new Set(r.values.map((v) => fitValue(el, v)).filter(Boolean))]
+          .map((value) => ({ value, sub: '' }));
+      },
+    };
+    return source;
+  }
 
   // ---------- writing values ----------
 
@@ -78,9 +145,16 @@
 
   async function autoFill(el, key) {
     try {
-      const profile = await getAnchor();
-      // Re-check: the user may have typed while we were fetching.
-      if (isEmpty(el)) setValue(el, formatValue(el, key, profile));
+      let value = '';
+      if (key) {
+        value = formatValue(el, key, await getAnchor());
+      } else {
+        const r = await askAi(el);
+        if (!r.fillable) return;
+        value = r.key ? formatValue(el, r.key, await getAnchor()) : fitValue(el, r.values[0] || '');
+      }
+      // Re-check: the user may have typed while we were waiting.
+      if (value && isEmpty(el)) setValue(el, value);
     } catch (err) {
       console.warn('[AutoFill AI]', err.message);
     }
@@ -92,7 +166,7 @@
     let host = null;
     let root = null;
     let target = null;
-    let fieldKey = null;
+    let source = null;
     let items = [];
     let active = -1;
     let token = 0;
@@ -125,7 +199,7 @@
         </div>`;
       // Keep focus on the input while interacting with the dropdown.
       root.addEventListener('mousedown', (e) => e.preventDefault());
-      root.querySelector('.more').addEventListener('click', () => load());
+      root.querySelector('.more').addEventListener('click', () => load(true));
       root.querySelector('.body').addEventListener('click', (e) => {
         const li = e.target.closest('li');
         if (li) choose(Number(li.dataset.i));
@@ -142,6 +216,7 @@
     }
 
     function render(html) {
+      root.querySelector('.title').textContent = `AutoFill AI · ${source.title}`;
       root.querySelector('.body').innerHTML = html;
     }
 
@@ -149,33 +224,22 @@
       return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
     }
 
-    async function load() {
+    async function load(fresh = false) {
       const my = ++token;
       render('<div class="msg">Loading suggestions…</div>');
       try {
-        const profiles = await requestProfiles(OPTION_COUNT + 2);
+        const result = await source.load(fresh);
         if (my !== token) return;
-        // Offer the page's anchor profile first so related fields stay consistent.
-        if (anchorProfile) profiles.unshift(anchorProfile);
-        const seen = new Set();
-        items = [];
-        for (const p of profiles) {
-          const value = formatValue(target, fieldKey, p);
-          if (!value || seen.has(value)) continue;
-          seen.add(value);
-          items.push({ value, profile: p });
-          if (items.length === OPTION_COUNT) break;
-        }
+        if (result === null) return hide(); // not a field we should fill
+        items = result;
         active = 0;
+        if (!items.length) return render('<div class="msg">No suggestions for this field.</div>');
         render(
           `<ul>${items
-            .map((it, i) => {
-              const sub = subtitleFor(fieldKey, it.profile);
-              return `<li data-i="${i}" class="${i === active ? 'active' : ''}">
+            .map((it, i) => `<li data-i="${i}" class="${i === active ? 'active' : ''}">
                         <div class="v">${escape(it.value)}</div>
-                        ${sub ? `<div class="s">${escape(sub)}</div>` : ''}
-                      </li>`;
-            })
+                        ${it.sub ? `<div class="s">${escape(it.sub)}</div>` : ''}
+                      </li>`)
             .join('')}</ul>`
         );
       } catch (err) {
@@ -192,17 +256,16 @@
     function choose(i) {
       const it = items[i];
       if (!it || !target) return;
-      anchorProfile = it.profile;
+      if (it.profile) anchorProfile = it.profile;
       setValue(target, it.value);
       hide();
     }
 
-    function show(el, key) {
+    function show(el, src) {
       ensure();
       target = el;
-      fieldKey = key;
+      source = src;
       items = [];
-      root.querySelector('.title').textContent = `AutoFill AI · ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
       host.style.display = 'block';
       position();
       load();
@@ -230,11 +293,12 @@
 
   function handleFocus(e) {
     const el = e.composedPath()[0];
-    if (!settings.enabled) return;
+    if (!settings.enabled || !isFillable(el) || !isEmpty(el)) return; // keep existing values
     const key = detect(el);
-    if (!key || !isEmpty(el)) return; // keep existing values untouched
+    // Unknown field: fall back to AI, unless it's one we should never touch.
+    if (!key && (!settings.ai || isIgnored(el))) return;
     if (settings.mode === 'auto') autoFill(el, key);
-    else dropdown.show(el, key);
+    else dropdown.show(el, key ? profileSource(el, key) : aiSource(el));
   }
 
   document.addEventListener('focusin', handleFocus, true);
