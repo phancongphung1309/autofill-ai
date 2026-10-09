@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AutoFill AI",
+  "version": "1.0.0",
+  "description": "Detects what an input field expects (city, email, phone…) and fills it with realistic data fetched from the internet.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://randomuser.me/*", "https://api.anthropic.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "AutoFill AI",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["field-detector.js", "content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

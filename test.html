@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>AutoFill AI test form</title>
+  <script src="https://cdn.tailwindcss.com/3.4.1"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <form class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow space-y-4">
+    <h1 class="text-lg font-semibold">AutoFill AI test form</h1>
+    <label class="block text-sm">City
+      <input class="w-full border text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:outline-none h-[38px] rounded-md px-3 py-0 focus:ring-primary/30 border-gray-200" type="text" value="" name="city">
+    </label>
+    <label class="block text-sm">City (already has a value, should be kept)
+      <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" type="text" value="Hanoi" name="city2">
+    </label>
+    <label class="block text-sm">First name <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="firstName"></label>
+    <label class="block text-sm">Last name <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="last_name"></label>
+    <label class="block text-sm">Email <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" type="email" name="email"></label>
+    <label class="block text-sm">Phone <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" type="tel" name="phone"></label>
+    <label class="block text-sm">Street address <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="address1"></label>
+    <label class="block text-sm">State <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="state"></label>
+    <label class="block text-sm">Postal code <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="zip"></label>
+    <label class="block text-sm">Country <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="country"></label>
+    <label class="block text-sm">Company <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" name="company_name"></label>
+    <label class="block text-sm">Date of birth <input class="w-full border h-[38px] rounded-md px-3 border-gray-200" type="date" name="dob"></label>
+  </form>
+</body>
+</html>

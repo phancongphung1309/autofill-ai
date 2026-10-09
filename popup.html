@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>AutoFill AI</h1>
+    <label class="switch" title="Enable / disable">
+      <input type="checkbox" id="enabled" />
+      <span></span>
+    </label>
+  </header>
+
+  <section>
+    <h2>Mode</h2>
+    <label class="option">
+      <input type="radio" name="mode" value="auto" />
+      <div><b>Auto</b><small>Fill the field as soon as you click into it.</small></div>
+    </label>
+    <label class="option">
+      <input type="radio" name="mode" value="manual" />
+      <div><b>Manual</b><small>Show 4 suggestions below the field to pick from.</small></div>
+    </label>
+  </section>
+
+  <section>
+    <h2>Data region</h2>
+    <select id="nat">
+      <option value="us">United States</option>
+      <option value="gb">United Kingdom</option>
+      <option value="au">Australia</option>
+      <option value="ca">Canada</option>
+      <option value="de">Germany</option>
+      <option value="fr">France</option>
+      <option value="es">Spain</option>
+      <option value="nl">Netherlands</option>
+      <option value="in">India</option>
+      <option value="br">Brazil</option>
+      <option value="mx">Mexico</option>
+      <option value="us,gb,au,ca,de,fr,es">Mixed</option>
+    </select>
+    <button id="refresh" type="button">↻ Fetch new data</button>
+    <p id="status"></p>
+  </section>
+
+  <footer>Fields that already have a value are never changed. Data from randomuser.me</footer>
+  <script src="popup.js"></script>
+</body>
+</html>
